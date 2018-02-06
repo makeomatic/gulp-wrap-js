@@ -1,6 +1,6 @@
 {
-  "name": "gulp-wrap-js",
-  "version": "0.4.1",
+  "name": "@makeomatic/gulp-wrap-js",
+  "version": "1.0.0",
   "description": "Gulp plugin for templating JavaScript code with source maps support.",
   "keywords": [
     "gulpplugin",
@@ -16,28 +16,36 @@
     "email": "me@rreverser.com",
     "url": "https://github.com/RReverser"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": "RReverser/gulp-wrap-js",
   "scripts": {
     "test": "mocha --reporter spec"
   },
   "dependencies": {
     "escodegen": "^1.6.1",
-    "esprima": "^2.3.0",
+    "esprima": "^4.0.0",
     "estemplate": "*",
     "gulp-util": "~3.0.5",
     "through2": "*",
-    "vinyl-sourcemaps-apply": "^0.1.4"
+    "vinyl-sourcemaps-apply": "^0.2.1"
   },
   "devDependencies": {
+    "babel-eslint": "^8.2.1",
+    "eslint": "^4.17.0",
+    "eslint-config-makeomatic": "^2.0.1",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-promise": "^3.6.0",
     "gulp": "^3.9.0",
-    "gulp-sourcemaps": "^1.5.2",
+    "gulp-sourcemaps": "^2.6.4",
     "mocha": "*",
-    "should": "^6.0.3",
+    "should": "^13.2.1",
     "stream-assert": "^2.0.2"
   },
   "engines": {
-    "node": ">=0.8.0",
-    "npm": ">=1.2.10"
+    "node": ">=8.9.0",
+    "npm": ">=4.0.0"
   },
   "license": "MIT"
 }

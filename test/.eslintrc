@@ -1,0 +1,6 @@
+{
+  "extends": "makeomatic",
+  "env": {
+  	"mocha": true
+  }
+}

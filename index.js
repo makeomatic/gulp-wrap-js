@@ -1,64 +1,65 @@
-var through = require('through2'),
-	gutil = require('gulp-util'),
-	esprima = require('esprima'),
-	estemplate = require('estemplate'),
-	escodegen = require('escodegen'),
-	applySourceMap = require('vinyl-sourcemaps-apply'),
-	path = require('path');
+const through = require('through2');
+const gutil = require('gulp-util');
+const esprima = require('esprima');
+const estemplate = require('estemplate');
+const escodegen = require('escodegen');
+const applySourceMap = require('vinyl-sourcemaps-apply');
+const path = require('path');
 
-module.exports = function (tmpl, format) {
-	'use strict';
+module.exports = function wrap(_tmpl, format = escodegen.FORMAT_DEFAULTS) {
+  if (!_tmpl) {
+    throw new gutil.PluginError('gulp-wrap-js', 'No template supplied');
+  }
 
-	if (!tmpl) {
-		throw new gutil.PluginError('gulp-wrap-js', 'No template supplied');
-	}
+  const tmpl = estemplate.compile(_tmpl, { attachComment: true });
 
-	tmpl = estemplate.compile(tmpl, { attachComment:true });
-	format = format || escodegen.FORMAT_DEFAULTS;
+  return through.obj((file, enc, callback) => {
+    // Do nothing if no contents
+    if (file.isNull()) {
+      return callback(null, file);
+    }
 
-	return through.obj(function (file, enc, callback) {
-		/*jshint validthis:true*/
+    if (file.isStream()) {
+      return callback(new gutil.PluginError('gulp-wrap-js', 'Stream content is not supported'));
+    }
 
-		// Do nothing if no contents
-		if (file.isNull()) {
-			return callback(null, file);
-		}
+    // check if file.contents is a `Buffer`
+    if (file.isBuffer()) {
+      let result;
+      try {
+        let ast = esprima.parse(file.contents, {
+          loc: true,
+          source: file.relative,
+          range: true,
+          tokens: true,
+          comment: true,
+        });
+        escodegen.attachComments(ast, ast.comments, ast.tokens);
+        ast.file = file;
+        ast = tmpl(ast);
 
-		if (file.isStream()) {
-			return callback(new gutil.PluginError('gulp-wrap-js', 'Stream content is not supported'));
-		}
+        result = escodegen.generate(ast, {
+          comment: true,
+          format,
+          sourceMap: true,
+          sourceMapWithCode: true,
+          file: file.relative,
+        });
+      } catch (e) {
+        // Relative to gulpfile.js filepath with forward slashes
+        const err = gutil.colors.magenta(path.relative('.', file.path).split(path.sep).join('/'));
+        return callback(new gutil.PluginError('gulp-wrap-js', `${err} ${e.message}`));
+      }
 
-		// check if file.contents is a `Buffer`
-		if (file.isBuffer()) {
-			try {
-				var ast = esprima.parse(file.contents, {
-					loc: true,
-					source: file.relative,
-					range: true,
-					tokens: true,
-					comment: true
-				});
-				escodegen.attachComments(ast, ast.comments, ast.tokens);
-				ast.file = file;
-				ast = tmpl(ast);
-				var result = escodegen.generate(ast, {
-					comment: true,
-					format: format,
-					sourceMap: true,
-					sourceMapWithCode: true,
-					file: file.relative
-				});
-			} catch(e) {
-				// Relative to gulpfile.js filepath with forward slashes
-				file = gutil.colors.magenta(path.relative('.', file.path).split(path.sep).join('/'));
-				return callback(new gutil.PluginError('gulp-wrap-js', file + ' ' + e.message))
-			}
+      file.contents = Buffer.from(result.code);
+      if (file.sourceMap) {
+        applySourceMap(file, JSON.parse(result.map.toString()));
+      }
 
-			file.contents = new Buffer(result.code);
-			if (file.sourceMap) {
-				applySourceMap(file, JSON.parse(result.map.toString()));
-			}
-			return callback(null, file);
-		}
-	});
+      return callback(null, file);
+    }
+
+    // noop
+    return callback(new Error('unsupported format'));
+  });
 };
