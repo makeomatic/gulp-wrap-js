@@ -5,18 +5,32 @@ const estemplate = require('estemplate');
 const escodegen = require('escodegen');
 const applySourceMap = require('vinyl-sourcemaps-apply');
 const path = require('path');
+const debug = require('debug')('gulp-wrap-js');
 
-module.exports = function wrap(_tmpl, format = escodegen.FORMAT_DEFAULTS) {
+module.exports = function wrap(_tmpl, options = {}) {
   if (!_tmpl) {
     throw new gutil.PluginError('gulp-wrap-js', 'No template supplied');
   }
 
   const tmpl = estemplate.compile(_tmpl, { attachComment: true });
+  const {
+    format = escodegen.FORMAT_DEFAULTS,
+  } = options;
 
-  return through.obj((file, enc, callback) => {
+  debug('template', tmpl);
+  debug('format', format);
+
+  return through.obj(function transform(file, enc, callback) {
+    // generate source maps if plugin source-map present
+    if (file.sourceMap) {
+      options.makeSourceMaps = true;
+    }
+
     // Do nothing if no contents
     if (file.isNull()) {
-      return callback(null, file);
+      debug('null file');
+      this.push(file);
+      return callback();
     }
 
     if (file.isStream()) {
@@ -27,17 +41,23 @@ module.exports = function wrap(_tmpl, format = escodegen.FORMAT_DEFAULTS) {
     if (file.isBuffer()) {
       let result;
       try {
-        let ast = esprima.parse(file.contents, {
+        debug('parse', file.contents);
+        let ast = esprima.parseScript(file.contents.toString(), {
           loc: true,
-          source: file.relative,
           range: true,
           tokens: true,
           comment: true,
+          source: file.relative,
         });
+
+        debug('comments');
         escodegen.attachComments(ast, ast.comments, ast.tokens);
+
+        debug('template');
         ast.file = file;
         ast = tmpl(ast);
 
+        debug('result');
         result = escodegen.generate(ast, {
           comment: true,
           format,
@@ -46,17 +66,21 @@ module.exports = function wrap(_tmpl, format = escodegen.FORMAT_DEFAULTS) {
           file: file.relative,
         });
       } catch (e) {
+        debug('error', e);
         // Relative to gulpfile.js filepath with forward slashes
         const err = gutil.colors.magenta(path.relative('.', file.path).split(path.sep).join('/'));
         return callback(new gutil.PluginError('gulp-wrap-js', `${err} ${e.message}`));
       }
 
+      debug('result', result.map);
+
       file.contents = Buffer.from(result.code);
       if (file.sourceMap) {
-        applySourceMap(file, JSON.parse(result.map.toString()));
+        applySourceMap(file, result.map.toJSON());
       }
 
-      return callback(null, file);
+      this.push(file);
+      return callback();
     }
 
     // noop
