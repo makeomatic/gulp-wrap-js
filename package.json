@@ -1,6 +1,6 @@
 {
   "name": "@makeomatic/gulp-wrap-js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Gulp plugin for templating JavaScript code with source maps support.",
   "keywords": [
     "gulpplugin",
