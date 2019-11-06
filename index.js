@@ -1,15 +1,16 @@
 const through = require('through2');
-const gutil = require('gulp-util');
 const esprima = require('esprima');
 const estemplate = require('estemplate');
 const escodegen = require('escodegen');
 const applySourceMap = require('vinyl-sourcemaps-apply');
 const path = require('path');
+const colors = require('ansi-colors');
+const PluginError = require('plugin-error');
 const debug = require('debug')('gulp-wrap-js');
 
 module.exports = function wrap(_tmpl, options = {}) {
   if (!_tmpl) {
-    throw new gutil.PluginError('gulp-wrap-js', 'No template supplied');
+    throw new PluginError('gulp-wrap-js', 'No template supplied');
   }
 
   const tmpl = estemplate.compile(_tmpl, { attachComment: true });
@@ -34,7 +35,7 @@ module.exports = function wrap(_tmpl, options = {}) {
     }
 
     if (file.isStream()) {
-      return callback(new gutil.PluginError('gulp-wrap-js', 'Stream content is not supported'));
+      return callback(new PluginError('gulp-wrap-js', 'Stream content is not supported'));
     }
 
     // check if file.contents is a `Buffer`
@@ -68,8 +69,8 @@ module.exports = function wrap(_tmpl, options = {}) {
       } catch (e) {
         debug('error', e);
         // Relative to gulpfile.js filepath with forward slashes
-        const err = gutil.colors.magenta(path.relative('.', file.path).split(path.sep).join('/'));
-        return callback(new gutil.PluginError('gulp-wrap-js', `${err} ${e.message}`));
+        const err = colors.magenta(path.relative('.', file.path).split(path.sep).join('/'));
+        return callback(new PluginError('gulp-wrap-js', `${err} ${e.message}`));
       }
 
       debug('result', result.map);
